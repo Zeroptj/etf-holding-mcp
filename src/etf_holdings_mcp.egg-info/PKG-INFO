@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: etf-holdings-mcp
+Version: 0.1.0
+Summary: MCP server exposing ETF top-10 holdings scraped from Morningstar
+Requires-Python: >=3.10
+Requires-Dist: mcp>=1.0.0
+Requires-Dist: playwright>=1.40.0
+Requires-Dist: pyyaml>=6.0

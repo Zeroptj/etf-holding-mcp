@@ -1,0 +1,2 @@
+[console_scripts]
+etf-holdings-mcp = etf_holdings_mcp.server:main
