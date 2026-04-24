@@ -1,24 +1,25 @@
 """Scrape top 10 holdings from Morningstar ETF Quote page."""
 
+import asyncio
 import time
 from typing import Optional
 
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 
 
 DEFAULT_EXCHANGE = "arcx"
 
 
-def _wait_ready(page, timeout: int = 30_000):
+async def _wait_ready(page, timeout: int = 30_000):
     try:
-        page.wait_for_load_state("networkidle", timeout=timeout)
-        page.wait_for_load_state("domcontentloaded", timeout=timeout)
-        time.sleep(2)
+        await page.wait_for_load_state("networkidle", timeout=timeout)
+        await page.wait_for_load_state("domcontentloaded", timeout=timeout)
+        await asyncio.sleep(2)
     except Exception:
         pass
 
 
-def _close_popups(page):
+async def _close_popups(page):
     selectors = [
         'button[aria-label="Close"]',
         'button[aria-label*="close" i]',
@@ -28,31 +29,31 @@ def _close_popups(page):
     ]
     for sel in selectors:
         try:
-            if page.locator(sel).count() > 0:
-                page.locator(sel).first.click(timeout=2000)
-                time.sleep(0.5)
+            if await page.locator(sel).count() > 0:
+                await page.locator(sel).first.click(timeout=2000)
+                await asyncio.sleep(0.5)
                 return
         except Exception:
             continue
 
 
-def _scrape_top10(page) -> list[dict]:
+async def _scrape_top10(page) -> list[dict]:
     rows = page.locator("div.mdc-fund-top-holdings__table__mdc table tbody tr")
-    rows.first.wait_for(timeout=15_000)
+    await rows.first.wait_for(timeout=15_000)
 
     results = []
-    for i in range(rows.count()):
+    for i in range(await rows.count()):
         row = rows.nth(i)
         try:
-            name = row.locator("td:nth-child(1) h3").inner_text().strip()
-            weight = row.locator("td:nth-child(2) span").inner_text().strip()
+            name = (await row.locator("td:nth-child(1) h3").inner_text()).strip()
+            weight = (await row.locator("td:nth-child(2) span").inner_text()).strip()
             results.append({"name": name, "weight_pct": float(weight)})
         except Exception:
             continue
     return results
 
 
-def fetch_holdings(
+async def fetch_holdings(
     ticker: str,
     exchange: str = DEFAULT_EXCHANGE,
     max_retries: int = 3,
@@ -72,12 +73,12 @@ def fetch_holdings(
 
     for attempt in range(1, max_retries + 1):
         try:
-            with sync_playwright() as pw:
-                browser = pw.chromium.launch(
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(
                     headless=True,
                     args=["--disable-blink-features=AutomationControlled"],
                 )
-                context = browser.new_context(
+                context = await browser.new_context(
                     user_agent=(
                         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -86,14 +87,14 @@ def fetch_holdings(
                     viewport={"width": 1920, "height": 1080},
                     locale="en-US",
                 )
-                page = context.new_page()
+                page = await context.new_page()
 
-                page.goto(url, wait_until="domcontentloaded", timeout=60_000)
-                _wait_ready(page)
-                _close_popups(page)
+                await page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+                await _wait_ready(page)
+                await _close_popups(page)
 
-                holdings = _scrape_top10(page)
-                browser.close()
+                holdings = await _scrape_top10(page)
+                await browser.close()
 
                 if holdings:
                     return holdings
@@ -102,9 +103,9 @@ def fetch_holdings(
 
         except Exception as e:
             if attempt < max_retries:
-                time.sleep(attempt * 5)
+                await asyncio.sleep(attempt * 5)
             else:
-                print(f"[scraper] {ticker} failed after {max_retries} attempts: {e}")
+                print(f"[scraper] {ticker} failed after {max_retries} attempts: {e}", flush=True)
                 return []
 
     return []

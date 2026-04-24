@@ -9,7 +9,7 @@ mcp = FastMCP("etf-holdings")
 
 
 @mcp.tool()
-def get_etf_holdings(ticker: str, exchange: str = "arcx") -> dict:
+async def get_etf_holdings(ticker: str, exchange: str = "arcx") -> dict:
     """
     Return top 10 holdings of an ETF with weight percentages.
 
@@ -33,7 +33,7 @@ def get_etf_holdings(ticker: str, exchange: str = "arcx") -> dict:
 
         If scraping fails, holdings will be an empty list.
     """
-    holdings = fetch_holdings(ticker.upper(), exchange=exchange)
+    holdings = await fetch_holdings(ticker.upper(), exchange=exchange)
     return {
         "ticker": ticker.upper(),
         "holdings": holdings,
